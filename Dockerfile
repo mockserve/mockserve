@@ -1,4 +1,4 @@
-FROM busybox:stable⁠
+FROM busybox:stable
 
 WORKDIR /www
 
