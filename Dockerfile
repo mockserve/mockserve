@@ -6,6 +6,8 @@ RUN apk add --no-cache micro-httpd
 # Set working directory (serves this folder)
 WORKDIR /www
 
+RUN touch /www/index.html
+
 # Expose your desired port (e.g. 8080)
 EXPOSE 8080
 
