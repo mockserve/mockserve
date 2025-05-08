@@ -1,9 +1,5 @@
-FROM alpine:latest
+FROM busybox:stable⁠
 
-# Install micro_httpd
-RUN apk add --no-cache micro-httpd
-
-# Set working directory (serves this folder)
 WORKDIR /www
 
 RUN touch /www/index.html
@@ -12,4 +8,4 @@ RUN touch /www/index.html
 EXPOSE 8080
 
 # Start micro_httpd on port 8080 serving /www
-CMD ["micro_httpd", "-p", "8080", "/www"]
+CMD ["httpd", "-f", "-p", "8080", "-h" , "/www"]
