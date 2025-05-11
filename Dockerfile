@@ -6,8 +6,8 @@ WORKDIR /www
 
 RUN touch /www/index.html
 
-# Expose your desired port (e.g. 8080)
+# Expose your desired port (e.g. 80)
 EXPOSE $PORT
 
 # Start httpd serving /www
-CMD ["httpd", "-f", "-p", $PORT, "-h" , "/www"]
+CMD ["httpd", "-f", "-p", "${PORT}", "-h" , "/www"]
