@@ -24,7 +24,7 @@ jobs:
           END=400
           
           # Initialize JSON array
-          echo "matrix=$(seq $START $BATCH_SIZE $END | jq -c -n '{range: [inputs]}' | jq -c '(.range[] | tostring) as $item | .range = [.range[] | {"start": $item, "end": ($item|tonumber + ${{ env.BATCH_SIZE }} - 1 | tostring)}] | .range = [.range[] | select(.end|tonumber <= 5000)]')" >> $GITHUB_OUTPUT
+          echo "matrix=$(seq $START $BATCH_SIZE $END | jq -c -n '{range: [inputs]}' | jq -c '(.range[] | tostring) as $item | .range = [.range[] | {"start": $item, "end": ($item|tonumber + ${{ env.BATCH_SIZE }} - 1 | tostring)}] | .range = [.range[] | select(.end|tonumber <= 400)]')" >> $GITHUB_OUTPUT
 
   build-and-push:
     needs: prepare-matrix
