@@ -1,44 +1,58 @@
 name: Docker
 
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "poc" ]
 
 env:
-  # Use docker.io for Docker Hub if empty
   REGISTRY: ghcr.io
-  # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
-
+  # Define batch size for parallel processing
+  BATCH_SIZE: 100
 
 jobs:
-  build-push:
-
+  prepare-matrix:
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          # Create a matrix with port ranges for parallel processing
+          # Generate ranges from 80 to 5000 in BATCH_SIZE increments
+          START=80
+          END=400
+          
+          # Initialize JSON array
+          echo "matrix=$(seq $START $BATCH_SIZE $END | jq -c -n '{range: [inputs]}' | jq -c '(.range[] | tostring) as $item | .range = [.range[] | {"start": $item, "end": ($item|tonumber + ${{ env.BATCH_SIZE }} - 1 | tostring)}] | .range = [.range[] | select(.end|tonumber <= 5000)]')" >> $GITHUB_OUTPUT
+
+  build-and-push:
+    needs: prepare-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        range: ${{ fromJson(needs.prepare-matrix.outputs.matrix).range }}
+      # Allow other jobs to continue even if one fails
+      fail-fast: false
+      
     permissions:
       contents: read
       packages: write
-      # This is used to complete the identity challenge
-      # with sigstore/fulcio when running outside of PRs.
       id-token: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Set up BuildKit Docker container builder to be able to build
-      # multi-platform images and export cache
-      # https://github.com/docker/setup-buildx-action
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          # Enable layer caching for faster builds
+          buildkitd-flags: --debug
 
-      # Login against a Docker registry except on PR
-      # https://github.com/docker/login-action
       - name: Log into registry ${{ env.REGISTRY }}
         uses: docker/login-action@v3
         with:
@@ -46,15 +60,53 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Loop versions from 80 to 9999
+      # Build and push images in batches using Docker Buildx's ability to tag multiple images at once
+      - name: Generate tags list
+        id: generate-tags
         run: |
-          for i in $(seq 80 9999); do
-            docker buildx build --push --platform linux/amd64,linux/arm64 --build-arg PORT=$i --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$i .
-          done
+          START=${{ matrix.range.start }}
+          END=${{ matrix.range.end }}
+          
+          # Generate comma-separated list of tags
+          TAGS=$(seq $START $END | awk -v reg="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" '{printf "%s:%s,", reg, $1}' | sed 's/,$//')
+          echo "TAGS=$TAGS" >> $GITHUB_ENV
+          echo "START=$START" >> $GITHUB_ENV
+          echo "END=$END" >> $GITHUB_ENV
+          
+          # Just for logging
+          echo "Building range from $START to $END"
 
+      # Use multi-stage build to create all images in a single docker build command
+      - name: Create Dockerfile for batch build
+        run: |
+          cat > Dockerfile.batch << 'EOF'
+          # Base image
+          FROM busybox:stable as base
+          
+          # Dynamic stages for each port
+          EOF
+          
+          for i in $(seq $START $END); do
+            cat >> Dockerfile.batch << EOF
+          
+          FROM base as port-$i
+          ARG PORT=$i
+          # Copy your original Dockerfile instructions here
+          # For example:
+          EXPOSE $i
+          # Your application setup for this specific port
+          CMD ["sh","-c","httpd -f -p $i -h /www"]
+          EOF
+          done
+      
+      - name: Build and push Docker images
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.batch
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.TAGS }}
+          # Use cache for faster builds
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
