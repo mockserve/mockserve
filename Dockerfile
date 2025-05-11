@@ -10,4 +10,4 @@ RUN touch /www/index.html
 EXPOSE $PORT
 
 # Start httpd serving /www
-CMD ["httpd", "-f", "-p", "${PORT}", "-h" , "/www"]
+CMD ["httpd", "-f", "-p", "${{PORT}}", "-h" , "/www"]
