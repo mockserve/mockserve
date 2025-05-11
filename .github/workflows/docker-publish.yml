@@ -1,58 +1,100 @@
 name: Docker
 
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
 on:
   push:
-    branches: [ "poc" ]
+    branches: [ "main" ]
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      start_port:
+        description: 'Start port number (default: 80)'
+        required: false
+        default: '80'
+      end_port:
+        description: 'End port number (default: 5000)'
+        required: false
+        default: '500'
+      batch_size:
+        description: 'Number of images per batch (default: 10)'
+        required: false
+        default: '20'
 
 env:
+  # Use docker.io for Docker Hub if empty
   REGISTRY: ghcr.io
+  # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
-  # Define batch size for parallel processing
-  BATCH_SIZE: 100
+  # Default settings if not provided by workflow_dispatch
+  START_PORT: ${{ github.event.inputs.start_port || '80' }}
+  END_PORT: ${{ github.event.inputs.end_port || '500' }}
+  BATCH_SIZE: ${{ github.event.inputs.batch_size || '20' }}
 
 jobs:
-  prepare-matrix:
+  prepare:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - id: set-matrix
+      - name: Generate port batches
+        id: set-matrix
         run: |
-          # Create a matrix with port ranges for parallel processing
-          # Generate ranges from 80 to 5000 in BATCH_SIZE increments
-          START=80
-          END=5000
+          start_port=${{ env.START_PORT }}
+          end_port=${{ env.END_PORT }}
+          batch_size=${{ env.BATCH_SIZE }}
           
-          # Initialize JSON array
-          echo "matrix=$(seq $START $BATCH_SIZE $END | jq -c -n '{range: [inputs]}' | jq -c '(.range[] | tostring) as $item | .range = [.range[] | {"start": $item, "end": ($item|tonumber + ${{ env.BATCH_SIZE }} - 1 | tostring)}] | .range = [.range[] | select(.end|tonumber <= 5000)]')" >> $GITHUB_OUTPUT
+          # Generate JSON array of port ranges
+          batches=$(python3 -c "
+          import json
+          start = $start_port
+          end = $end_port
+          batch_size = $batch_size
+          
+          batches = []
+          current = start
+          while current <= end:
+              batch_end = min(current + batch_size - 1, end)
+              batches.append({'start': current, 'end': batch_end})
+              current = batch_end + 1
+          
+          print(json.dumps(batches))
+          ")
+          
+          echo "matrix={\"batch\":$batches}" >> $GITHUB_OUTPUT
 
-  build-and-push:
-    needs: prepare-matrix
+  build-push:
+    needs: prepare
     runs-on: ubuntu-latest
     strategy:
-      matrix:
-        range: ${{ fromJson(needs.prepare-matrix.outputs.matrix).range }}
-      # Allow other jobs to continue even if one fails
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
+      # Allow jobs to continue even if one fails
       fail-fast: false
       
     permissions:
       contents: read
       packages: write
-      id-token: write
+      id-token: write  # For sigstore/fulcio when running outside of PRs
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
+      # Set up Docker Buildx for multi-platform builds
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
-          # Enable layer caching for faster builds
-          buildkitd-flags: --debug
+          # Use docker-container driver with cache exporter
+          driver: docker-container
+          
+      # Set up QEMU for multi-architecture support
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
+      # Login to registry
       - name: Log into registry ${{ env.REGISTRY }}
         uses: docker/login-action@v3
         with:
@@ -60,53 +102,33 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Build and push images in batches using Docker Buildx's ability to tag multiple images at once
-      - name: Generate tags list
-        id: generate-tags
-        run: |
-          START=${{ matrix.range.start }}
-          END=${{ matrix.range.end }}
-          
-          # Generate comma-separated list of tags
-          TAGS=$(seq $START $END | awk -v reg="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" '{printf "%s:%s,", reg, $1}' | sed 's/,$//')
-          echo "TAGS=$TAGS" >> $GITHUB_ENV
-          echo "START=$START" >> $GITHUB_ENV
-          echo "END=$END" >> $GITHUB_ENV
-          
-          # Just for logging
-          echo "Building range from $START to $END"
-
-      # Use multi-stage build to create all images in a single docker build command
-      - name: Create Dockerfile for batch build
-        run: |
-          cat > Dockerfile.batch << 'EOF'
-          # Base image
-          FROM busybox:stable as base
-          
-          # Dynamic stages for each port
-          EOF
-          
-          for i in $(seq $START $END); do
-            cat >> Dockerfile.batch << EOF
-          
-          FROM base as port-$i
-          ARG PORT=$i
-          # Copy your original Dockerfile instructions here
-          # For example:
-          EXPOSE $i
-          # Your application setup for this specific port
-          CMD ["sh","-c","httpd -f -p $i -h /www"]
-          EOF
-          done
-      
-      - name: Build and push Docker images
+      # Build base image once and cache it
+      - name: Build base image for caching
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile.batch
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ env.TAGS }}
-          # Use cache for faster builds
+          push: false
+          load: true
+          tags: base-image:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # Build and push ports in the current batch
+      - name: Build and push port images in batch
+        run: |
+          start_port=${{ matrix.batch.start }}
+          end_port=${{ matrix.batch.end }}
+          
+          echo "Building ports $start_port to $end_port"
+          
+          # Use parallel processing where possible
+          seq $start_port $end_port | xargs -P 2 -I {} bash -c '
+            echo "Building image for port {}"
+            docker buildx build \
+              --push \
+              --platform linux/amd64,linux/arm64 \
+              --build-arg PORT={} \
+              --cache-from type=gha \
+              --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:{} \
+              .
+          '
