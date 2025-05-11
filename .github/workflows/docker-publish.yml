@@ -65,6 +65,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           context: .
           push: true
+          build-args: PORT=${{ matrix.port }}
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.port }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
