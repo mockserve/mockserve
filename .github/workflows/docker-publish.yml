@@ -56,17 +56,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Build and push Docker image with Buildx (don't push on PR)
-      # https://github.com/docker/build-push-action
-      - name: Build and push Docker image
-        id: build-and-push
-        uses: docker/build-push-action@v6
-        with:
-          platforms: linux/amd64,linux/arm64
-          context: .
-          push: true
-          build-args: PORT=${{ matrix.port }}
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.port }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Loop versions from 80 to 99
+        run: |
+          for i in $(seq 80 99); do
+            docker buildx build --platform linux/amd64,linux/arm64 --build-arg PORT=$i --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$i .
+          done
 
