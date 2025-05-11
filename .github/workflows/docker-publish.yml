@@ -21,10 +21,10 @@ jobs:
           # Create a matrix with port ranges for parallel processing
           # Generate ranges from 80 to 5000 in BATCH_SIZE increments
           START=80
-          END=400
+          END=5000
           
           # Initialize JSON array
-          echo "matrix=$(seq $START $BATCH_SIZE $END | jq -c -n '{range: [inputs]}' | jq -c '(.range[] | tostring) as $item | .range = [.range[] | {"start": $item, "end": ($item|tonumber + ${{ env.BATCH_SIZE }} - 1 | tostring)}] | .range = [.range[] | select(.end|tonumber <= 400)]')" >> $GITHUB_OUTPUT
+          echo "matrix=$(seq $START $BATCH_SIZE $END | jq -c -n '{range: [inputs]}' | jq -c '(.range[] | tostring) as $item | .range = [.range[] | {"start": $item, "end": ($item|tonumber + ${{ env.BATCH_SIZE }} - 1 | tostring)}] | .range = [.range[] | select(.end|tonumber <= 5000)]')" >> $GITHUB_OUTPUT
 
   build-and-push:
     needs: prepare-matrix
