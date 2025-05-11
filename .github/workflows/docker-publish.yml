@@ -18,11 +18,11 @@ on:
       end_port:
         description: 'End port number (default: 5000)'
         required: false
-        default: '500'
+        default: '9999'
       batch_size:
         description: 'Number of images per batch (default: 10)'
         required: false
-        default: '20'
+        default: '250'
 
 env:
   # Use docker.io for Docker Hub if empty
@@ -31,8 +31,8 @@ env:
   IMAGE_NAME: ${{ github.repository }}
   # Default settings if not provided by workflow_dispatch
   START_PORT: ${{ github.event.inputs.start_port || '80' }}
-  END_PORT: ${{ github.event.inputs.end_port || '500' }}
-  BATCH_SIZE: ${{ github.event.inputs.batch_size || '20' }}
+  END_PORT: ${{ github.event.inputs.end_port || '9999' }}
+  BATCH_SIZE: ${{ github.event.inputs.batch_size || '250' }}
 
 jobs:
   prepare:
