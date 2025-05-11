@@ -17,7 +17,7 @@ env:
 
 
 jobs:
-  build:
+  build-push:
 
     runs-on: ubuntu-latest
     permissions:
@@ -52,9 +52,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Loop versions from 80 to 99
+      - name: Loop versions from 80 to 9999
         run: |
-          for i in $(seq 80 99); do
+          for i in $(seq 80 9999); do
             docker buildx build --push --platform linux/amd64,linux/arm64 --build-arg PORT=$i --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$i .
           done
 
