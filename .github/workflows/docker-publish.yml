@@ -55,6 +55,6 @@ jobs:
       - name: Loop versions from 80 to 99
         run: |
           for i in $(seq 80 99); do
-            docker buildx build --platform linux/amd64,linux/arm64 --build-arg PORT=$i --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$i .
+            docker buildx build --push --platform linux/amd64,linux/arm64 --build-arg PORT=$i --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$i .
           done
 
