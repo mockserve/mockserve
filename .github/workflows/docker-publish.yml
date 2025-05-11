@@ -7,7 +7,7 @@ name: Docker
 
 on:
   push:
-    branches: [ "poc" ]
+    branches: [ "main" ]
   # Allow manual trigger
   workflow_dispatch:
     inputs:
