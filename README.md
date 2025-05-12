@@ -1,6 +1,6 @@
 # mockserve
 
-Docker image publishing system that generates multiple pre-configured images tagged with port numbers. Designed for batch processing port-specific configurations across multiple architectures.
+Docker image publishing system that generates multiple pre-configured images tagged with port numbers. Designed start containner on port-specific configurations across multiple architectures.
 
 ## Image Structure
 - Images published to `ghcr.io/<your-account>/mockserve:<port>`
