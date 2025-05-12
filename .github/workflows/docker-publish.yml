@@ -3,6 +3,11 @@ name: Build Docker Image CI on development
 on:
   push:
     branches: [ "main" ]
+    paths: 
+      - 'Dockerfile'
+      - 'www/**'
+      - '.github/workflows/docker-publish.yml'
+
   # Allow manual trigger
   workflow_dispatch:
     inputs:
