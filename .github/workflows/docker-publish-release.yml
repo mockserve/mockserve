@@ -10,9 +10,9 @@ env:
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
   # Default settings if not provided by workflow_dispatch
-  START_PORT: ${{ github.event.inputs.start_port || '80' }}
-  END_PORT: ${{ github.event.inputs.end_port || '9999' }}
-  BATCH_SIZE: ${{ github.event.inputs.batch_size || '250' }}
+  START_PORT: "80"
+  END_PORT: "9999"
+  BATCH_SIZE: "250"
 
 jobs:
   prepare:
