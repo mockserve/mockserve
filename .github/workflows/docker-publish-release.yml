@@ -1,23 +1,8 @@
-name: Build Docker Image CI on development
+name: Build Docker Image CI on release
 
 on:
-  push:
-    branches: [ "main" ]
-  # Allow manual trigger
-  workflow_dispatch:
-    inputs:
-      start_port:
-        description: 'Start port number (default: 80)'
-        required: false
-        default: '80'
-      end_port:
-        description: 'End port number (default: 5000)'
-        required: false
-        default: '95'
-      batch_size:
-        description: 'Number of images per batch (default: 10)'
-        required: false
-        default: '5'
+  release:
+    types: [published]
 
 env:
   # Use docker.io for Docker Hub if empty
@@ -26,8 +11,8 @@ env:
   IMAGE_NAME: ${{ github.repository }}
   # Default settings if not provided by workflow_dispatch
   START_PORT: ${{ github.event.inputs.start_port || '80' }}
-  END_PORT: ${{ github.event.inputs.end_port || '95' }}
-  BATCH_SIZE: ${{ github.event.inputs.batch_size || '5' }}
+  END_PORT: ${{ github.event.inputs.end_port || '9999' }}
+  BATCH_SIZE: ${{ github.event.inputs.batch_size || '250' }}
 
 jobs:
   prepare:

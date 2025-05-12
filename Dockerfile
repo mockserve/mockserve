@@ -3,6 +3,8 @@ FROM busybox:stable
 ARG PORT=80
 ENV PORT=$PORT
 
+COPY www /www
+
 WORKDIR /www
 
 RUN touch /www/index.html
