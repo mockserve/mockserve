@@ -15,10 +15,10 @@ A lightweight Docker-based HTTP server built on BusyBox, designed for testing an
 ### Pull and Run
 ```bash
 # Pull a specific port image
-docker pull ghcr.io/your-account/mockserve:80
+docker pull ghcr.io/mockserve/mockserve:80
 
 # Run container with port mapping
-docker run -p 80:80 ghcr.io/your-account/mockserve:80
+docker run -p 80:80 ghcr.io/mockserve/mockserve:80
 ```
 
 ### Build Locally
@@ -33,7 +33,7 @@ docker run -p 8080:8080 mockserve:8080
 ## Image Structure
 
 Images are published to GitHub Container Registry with the following structure:
-- **Registry**: `ghcr.io/<your-account>/mockserve`
+- **Registry**: `ghcr.io/mockserve/mockserve`
 - **Tags**: Port numbers (e.g., `:80`, `:443`, `:8080`, `:3000`)
 - **Architectures**: 
   - `linux/amd64`
@@ -71,19 +71,16 @@ mockserve/
 ### Different Ports
 ```bash
 # Web server on port 80
-docker run -p 80:80 ghcr.io/your-account/mockserve:80
+docker run -p 80:80 ghcr.io/mockserve/mockserve:80
 
 # Development server on port 3000
-docker run -p 3000:3000 ghcr.io/your-account/mockserve:3000
+docker run -p 3000:3000 ghcr.io/mockserve/mockserve:3000
 
-# HTTPS port (for testing)
-docker run -p 443:443 ghcr.io/your-account/mockserve:443
-```
 
 ### Custom Content
 ```bash
 # Mount your own content
-docker run -p 8080:8080 -v $(pwd)/my-content:/www ghcr.io/your-account/mockserve:8080
+docker run -p 8080:8080 -v $(pwd)/my-content:/www ghcr.io/mockserve/mockserve:8080
 ```
 
 ### Docker Compose
@@ -91,7 +88,7 @@ docker run -p 8080:8080 -v $(pwd)/my-content:/www ghcr.io/your-account/mockserve
 version: '3.8'
 services:
   web:
-    image: ghcr.io/your-account/mockserve:80
+    image: ghcr.io/mockserve/mockserve:80
     ports:
       - "80:80"
     volumes:
@@ -108,7 +105,7 @@ docker buildx create --name multiarch --use
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
   --build-arg PORT=80 \
-  --tag ghcr.io/your-account/mockserve:80 \
+  --tag ghcr.io/mockserve/mockserve:80 \
   --push .
 ```
 
@@ -126,4 +123,4 @@ This project is open source and available under the [MIT License](LICENSE).
 
 ## Support
 
-For issues, questions, or contributions, please visit the [GitHub repository](https://github.com/your-account/mockserve).
+For issues, questions, or contributions, please visit the [GitHub repository](https://github.com/mockserve/mockserve).
